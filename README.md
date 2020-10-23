@@ -1,6 +1,6 @@
 # CMU 15-445/645 Introduction to Database System (Fall 2020)
 
-This repo contains a fork on the programming project of the intro-database course of CMU. The project is given as an implementation of `BusTub`. I may be still working on this repo, therefore this may not be complete. Nevertheless, you must stick to your collab policy and should not dishonor yourself with this repo.
+This repo is a fork on the programming project of the intro-database course of CMU. The project is given as an implementation of `BusTub`. I may be still working on this repo, therefore this may not be complete. Nevertheless, you must stick to your collab policy and should not dishonor yourself with this repo.
 
 Branch `skeleton` stores the original version forked from the BusTub repo on the date around 2020.10.14.
 
