@@ -25,6 +25,17 @@ namespace bustub {
  * LRUReplacer implements the lru replacement policy, which approximates the Least Recently Used policy.
  */
 class LRUReplacer : public Replacer {
+ private:
+  struct LRUEntry {
+    frame_id_t frameId;
+    bool operator==(const LRUEntry &rhs) const;
+    bool operator!=(const LRUEntry &rhs) const;
+  };
+  std::list<LRUEntry> usedList;
+
+  // sync
+  std::mutex latch;
+
  public:
   /**
    * Create a new LRUReplacer.
