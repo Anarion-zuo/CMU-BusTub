@@ -42,7 +42,27 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
   // 2.     If R is dirty, write it back to the disk.
   // 3.     Delete R from the page table and insert P.
   // 4.     Update P's metadata, read in the page content from disk, and then return a pointer to P.
-  return nullptr;
+
+  // 1.     Search the page table for the requested page (P).
+  auto ptIt = page_table_.find(page_id);
+  if (ptIt != page_table_.end()) {
+    // 1.1    If P exists, pin it and return it immediately.
+    replacer_->Pin(page_id);
+    return &pages_[page_id];
+  }
+  // 1.2    If P does not exist, find a replacement page (R) from either the free list or the replacer.
+  //        Note that pages are always found from the free list first.
+  page_table_.insert({page_id, pickVictimFrame()});
+  // 2.     If R is dirty, write it back to the disk.
+  if (pages_[page_id].IsDirty()) {
+    disk_manager_->WritePage(page_id, pages_[page_id].GetData());
+  }
+  // 3.     Delete R from the page table and insert P.
+  disk_manager_->ReadPage(page_id, pages_[page_id].data_);
+  // 4.     Update P's metadata, read in the page content from disk, and then return a pointer to P.
+  pages_[page_id].is_dirty_ = false;
+//  pages_[page_id].pin_count_
+  return &pages_[page_id];
 }
 
 bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) { return false; }
@@ -58,7 +78,27 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   // 2.   Pick a victim page P from either the free list or the replacer. Always pick from the free list first.
   // 3.   Update P's metadata, zero out memory and add P to the page table.
   // 4.   Set the page ID output parameter. Return a pointer to P.
-  return nullptr;
+
+  // 0.   Make sure you call DiskManager::AllocatePage!
+  disk_manager_->AllocatePage();
+  // 1.   If all the pages in the buffer pool are pinned, return nullptr.
+  size_t index = 0;
+  for (; index < this->pool_size_; ++index) {
+    if (pages_[index].GetPinCount() == 0) {
+      *page_id = index;
+      break;
+    }
+  }
+  if (index == pool_size_) {
+    return nullptr;
+  }
+  *page_id = index;
+  // 2.   Pick a victim page P from either the free list or the replacer. Always pick from the free list first.
+  page_table_.insert({index, pickVictimFrame()});
+  // 3.   Update P's metadata, zero out memory and add P to the page table.
+  pages_[index].is_dirty_ = false;
+  pages_[index].ResetMemory();
+  return &pages_[index];
 }
 
 bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
@@ -72,6 +112,23 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
 
 void BufferPoolManager::FlushAllPagesImpl() {
   // You can do it!
+}
+frame_id_t BufferPoolManager::pickVictimFrame() {
+  frame_id_t result;
+  if (free_list_.empty()) {
+    // empty free list
+    // victim a non-free page
+    bool ret = replacer_->Victim(&result);
+    if (!ret) {
+      // failed
+      throw std::exception();
+    }
+  } else {
+    // fetch from free list
+    result = free_list_.front();
+    free_list_.pop_front();
+  }
+  return result;
 }
 
 }  // namespace bustub
